@@ -1,10 +1,7 @@
-from multiprocessing.managers import view_type
-
 from fontTools.ttLib import TTFont
-
-from PyQt6 import QtWidgets
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog
-from PyQt6.QtGui import QFontDatabase, QFont, QStandardItemModel, QStandardItem
+from PyQt6 import QtWidgets, QtCore
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QLabel, QTableWidget
+from PyQt6.QtGui import QFontDatabase
 
 from ttfFontViwerForm import Ui_MainWindow
 
@@ -15,6 +12,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+
+        # Змінюємо tableView на tableWidget для можливості використання QLabel у комірках
+        self.ui.tableWidget = QTableWidget(self)
+        self.ui.tableWidget.setGeometry(self.ui.tableView.geometry())  # Використовуємо ті ж розміри, що й у tableView
+        self.setCentralWidget(self.ui.tableWidget)  # Замінюємо основний віджет
 
         self.ui.actionOpen_ttf.triggered.connect(self.open_file_dialog)
         self.ui.actionExit.triggered.connect(self.exit_action)
@@ -31,9 +33,8 @@ class MainWindow(QMainWindow):
                 font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
                 print("Font name: ", font_family)
 
-                # Встановлюємо шрифт для таблиці
-                font = QFont(font_family)
-                self.ui.tableView.setFont(font)
+                # Встановлюємо шрифт для символів
+                self.font_ttf = font_family
 
                 # Отримуємо підтримувані символи Unicode
                 supported_unicode = self.get_supported_unicode_from_ttf(file_name)
@@ -44,47 +45,45 @@ class MainWindow(QMainWindow):
             else:
                 print("Failed to load font.")
 
-
     def exit_action(self):
         print("exit")
         QApplication.quit()
 
     def populate_table_with_unicode(self, supported_unicode):
-        # Create a model for the table
-        model = QStandardItemModel()
+        # Очищаємо таблицю перед заповненням
+        self.ui.tableWidget.clear()
 
-        # Add column headers (0-9)
-        model.setHorizontalHeaderLabels([str(i) for i in range(10)])
+        # Встановлюємо кількість колонок і рядків
+        self.ui.tableWidget.setColumnCount(10)
+        self.ui.tableWidget.setRowCount((len(supported_unicode) + 9) // 10)
 
-        # Перетворюємо список Unicode символів у відсортований список
+        # Сортуємо список підтримуваних Unicode символів
         supported_unicode = sorted(supported_unicode)
 
-        # Populate the table only with supported Unicode symbols
-        row_count = (len(supported_unicode) + 9) // 10  # Рахуємо кількість рядків, потрібних для всіх символів
+        # Рахуємо кількість рядків, потрібних для всіх символів
+        row_count = (len(supported_unicode) + 9) // 10
         for row in range(row_count):
-            row_items = []
             for col in range(10):
                 index = row * 10 + col
                 if index < len(supported_unicode):
                     unicode_value = supported_unicode[index]
                     char = chr(unicode_value)
-                    # Додаємо символ і код Unicode в комірку
-                    item_text = f"{char} (U+{unicode_value:04X})"
-                    row_items.append(QStandardItem(item_text))
-                else:
-                    row_items.append(QStandardItem(''))  # Порожня комірка, якщо символів менше, ніж клітинок
-            model.appendRow(row_items)
 
-        # Set the model to the tableView
-        self.ui.tableView.setModel(model)
+                    # Створюємо QLabel для відображення символу і коду Unicode
+                    label = QLabel()
+                    label.setText(f"<span style='font-family:{self.font_ttf}; font-size: 24px;'>{char}</span><br>"
+                                  f"<span style='font-family: sans-serif; font-size: 12px;'>U+{unicode_value:04X}</span>")
+                    label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)  # Вирівнюємо по центру
 
-        # Set the width of each column to a fixed value
+                    # Вставляємо QLabel у таблицю
+                    self.ui.tableWidget.setCellWidget(row, col, label)
+
+            # Встановлюємо висоту рядка (за замовчуванням, 50 пікселів)
+            self.ui.tableWidget.setRowHeight(row, 60)  # Встановлюємо більшу висоту для кожного рядка
+
+        # Встановлюємо ширину колонок
         for col in range(10):
-            self.ui.tableView.setColumnWidth(col, 150)  # Ширина збільшена для відображення символа і коду Unicode
-
-        # Налаштування для заголовків колонок і рядків (за замовчуванням — системний шрифт)
-        self.ui.tableView.horizontalHeader().setFont(QApplication.font())  # Системний шрифт для заголовків колонок
-        self.ui.tableView.verticalHeader().setFont(QApplication.font())  # Системний шрифт для заголовків рядків
+            self.ui.tableWidget.setColumnWidth(col, 120)  # Ширина для символа і коду Unicode
 
     def get_supported_unicode_from_ttf(self, ttf_file_path):
         # Відкриваємо шрифт TTF
