@@ -34,15 +34,12 @@ class MainWindow(QMainWindow):
                 # Встановлюємо шрифт для таблиці
                 font = QFont(font_family)
                 self.ui.tableView.setFont(font)
-                self.populate_table_with_unicode()
 
                 # Отримуємо підтримувані символи Unicode
                 supported_unicode = self.get_supported_unicode_from_ttf(file_name)
 
-                # Виводимо список кодів Unicode
-                print(f"Supported Unicode characters in {file_name}:")
-                for code in sorted(supported_unicode):
-                    print(f"U+{code:04X} : {chr(code)}")  # Виводимо Unicode і відповідний символ
+                # Оновлюємо таблицю підтримуваними символами
+                self.populate_table_with_unicode(supported_unicode)
 
             else:
                 print("Failed to load font.")
@@ -52,28 +49,30 @@ class MainWindow(QMainWindow):
         print("exit")
         QApplication.quit()
 
-    def populate_table_with_unicode(self):
+    def populate_table_with_unicode(self, supported_unicode):
         # Create a model for the table
         model = QStandardItemModel()
 
         # Add column headers (0-9)
         model.setHorizontalHeaderLabels([str(i) for i in range(10)])
 
-        # Populate the table with Unicode symbols
-        for row in range(14918):
+        # Перетворюємо список Unicode символів у відсортований список
+        supported_unicode = sorted(supported_unicode)
+
+        # Populate the table only with supported Unicode symbols
+        row_count = (len(supported_unicode) + 9) // 10  # Рахуємо кількість рядків, потрібних для всіх символів
+        for row in range(row_count):
             row_items = []
             for col in range(10):
-                # Calculate the Unicode value: 10 * row + col
-                unicode_value = 10 * row + col
-                try:
-                    # Convert Unicode to character
+                index = row * 10 + col
+                if index < len(supported_unicode):
+                    unicode_value = supported_unicode[index]
                     char = chr(unicode_value)
-                except ValueError:
-                    # If Unicode value is invalid, leave it empty
-                    char = ''
-                # Add the character to the row
-                row_items.append(QStandardItem(char))
-            # Append the row to the model
+                    # Додаємо символ і код Unicode в комірку
+                    item_text = f"{char} (U+{unicode_value:04X})"
+                    row_items.append(QStandardItem(item_text))
+                else:
+                    row_items.append(QStandardItem(''))  # Порожня комірка, якщо символів менше, ніж клітинок
             model.appendRow(row_items)
 
         # Set the model to the tableView
@@ -81,7 +80,7 @@ class MainWindow(QMainWindow):
 
         # Set the width of each column to a fixed value
         for col in range(10):
-            self.ui.tableView.setColumnWidth(col, 50)  # Width set to 50 pixels for each column
+            self.ui.tableView.setColumnWidth(col, 150)  # Ширина збільшена для відображення символа і коду Unicode
 
         # Налаштування для заголовків колонок і рядків (за замовчуванням — системний шрифт)
         self.ui.tableView.horizontalHeader().setFont(QApplication.font())  # Системний шрифт для заголовків колонок
