@@ -12,10 +12,6 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-
-        # Змінюємо tableView на tableWidget для можливості використання QLabel у комірках
-        self.ui.tableWidget = QTableWidget(self)
-        self.ui.tableWidget.setGeometry(self.ui.tableView.geometry())  # Використовуємо ті ж розміри, що й у tableView
         self.setCentralWidget(self.ui.tableWidget)  # Замінюємо основний віджет
 
         self.ui.actionOpen_ttf.triggered.connect(self.open_file_dialog)
