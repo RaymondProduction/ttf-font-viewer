@@ -1,0 +1,2 @@
+arial: https://github.com/kavin808/arial.ttf
+Noto_Color_Emoji: https://fonts.google.com/noto/specimen/Noto+Color+Emoji?query=noto+color
